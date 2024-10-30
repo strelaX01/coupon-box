@@ -1,0 +1,33 @@
+# Learn more about configuring your app at https://shopify.dev/docs/apps/tools/cli/configuration
+
+client_id = "26a29b81cf9fde1b011ea91bab3b24a0"
+name = "coupon-box"
+handle = "coupon-box-4"
+application_url = "https://concepts-herbs-restructuring-hans.trycloudflare.com"
+embedded = true
+
+[build]
+automatically_update_urls_on_dev = true
+dev_store_url = "obstore-x.myshopify.com"
+include_config_on_deploy = true
+
+[access_scopes]
+# Learn more at https://shopify.dev/docs/apps/tools/cli/configuration#access_scopes
+scopes = "write_products"
+
+[auth]
+redirect_urls = [
+  "https://concepts-herbs-restructuring-hans.trycloudflare.com/auth/callback",
+  "https://concepts-herbs-restructuring-hans.trycloudflare.com/auth/shopify/callback",
+  "https://concepts-herbs-restructuring-hans.trycloudflare.com/api/auth/callback"
+]
+
+[webhooks]
+api_version = "2024-07"
+
+  [[webhooks.subscriptions]]
+  topics = [ "app/uninstalled" ]
+  uri = "/webhooks"
+
+[pos]
+embedded = false

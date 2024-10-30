@@ -1,0 +1,438 @@
+<div
+  id="coupon-form-container"
+  class="outer-container"
+  data-header-color="{{ block.settings.header_color }}"
+  data-font-size="{{ block.settings.font_size }}"
+  data-border-radius="{{ block.settings.border_radius }}"
+  data-bold-text="{{ block.settings.bold_text }}"
+  data-font-size-content="{{ block.settings.font_size_content }}"
+  data-content-color="{{ block.settings.content_color }}"
+  data-checkbox-name="{{ block.settings.get_name }}"
+  data-checkbox-phone="{{ block.settings.get_phone }}"
+  data-checkbox-email="{{ block.settings.get_email }}"
+  data-checkbox-terms="{{ block.settings.accept_terms }}"
+  data-type-button-submit="{{ block.settings.type_button }}"
+  data-background-button-color="{{ block.settings.background_button_color }}"
+  data-text-button-color="{{ block.settings.text_button_color }}"
+>
+  <div class="form-container">
+    <div class="image-container">
+      <img
+        src="{{ block.settings.background_image | asset_url | default: 'https://picsum.photos/seed/picsum/200/300' }}"
+        alt="background image"
+        width="100%"
+        height="100%"
+      >
+    </div>
+    <div
+      class="form-content"
+      id="form-content"
+      data-background-color="{{ block.settings.background_color }}"
+    >
+      <button class="close-btn">&times;</button>
+      <form class="form-text" id="coupon-form">
+        <h1 id="header-title">{{ block.settings.header_title | truncate: 24, '' }}</h1>
+        <p id="content-text">{{ block.settings.content | truncate: 150, '...' }}</p>
+        <div class="namebox" id="namebox">
+          <input type="text" id="firstname-input" name="firstname" placeholder="Firstname" required>
+          <input type="text" id="lastname-input" name="lastname" placeholder="Lastname" required>
+        </div>
+        <input type="text" id="phone-input" name="phone" placeholder="Phone" required>
+        <input type="email" id="email-input" name="email" placeholder="Email" required>
+        <div class="cb-container" id="agree-box">
+          <input type="checkbox" id="agree" name="agree" value="yes" required>
+          <label for="agree" id="agree-label">{{ block.settings.terms_text | truncate: 50, '' }}</label>
+        </div>
+        <div class="g-recaptcha" id="g-recaptcha" data-sitekey=""></div>
+        <input type="hidden" id="g-recaptcha-response" name="g-recaptcha-response">
+        <div class="button-container">
+          <button
+            class="btn-submit {% if block.settings.type_button == 'Short' %} short {% endif %}"
+            id="btn-submit"
+            type="submit"
+          >
+            {{ block.settings.submit_text }}
+          </button>
+        </div>
+        <button class="btn-no-thank" type="button" id="btn-no-thank">No, Thank</button>
+      </form>
+    </div>
+  </div>
+</div>
+
+<div id="topbar">
+  <div class="circle">Form</div>
+</div>
+
+<div id="bottombar">
+  <div class="circle">Form</div>
+</div>
+
+<div class="result-form" id="result-form">
+  <div class="result-container">
+    <div class="result-image-container">
+      <img
+        src="{{ block.settings.background_image | asset_url | default: 'https://picsum.photos/seed/picsum/200/300' }}"
+        alt="background image"
+        width="100%"
+        height="100%"
+      >
+    </div>
+    <div class="result-content">
+      <button class="close-btn-result">&times;</button>
+      <h1 id="result-header-title">Thank you for submitting!</h1>
+      <p id="result-content-text">Your coupon code: <span id="coupon-code"></span></p>
+    </div>
+  </div>
+</div>
+
+<script src="https://www.google.com/recaptcha/api.js" async defer></script>
+
+<script>
+  document.addEventListener("DOMContentLoaded", function () {
+      // Cài đặt captcha
+      var captchaSettings = {{ shop.metafields.CapChaSettings | json }};
+      const isEnabled = captchaSettings.CapChaSettings.capchaToggleEnable;
+      const siteKey = captchaSettings.CapChaSettings.capchaSiteKey;
+      const version = captchaSettings.CapChaSettings.version;
+  
+      if (isEnabled) {
+          grecaptcha.ready(function() {
+              if (version === "v2") {
+                  const recaptchaElement = document.getElementById('g-recaptcha');
+                  recaptchaElement.setAttribute('data-sitekey', siteKey);
+                  console.log('reCAPTCHA v2 đang được thiết lập với siteKey::', siteKey);
+                  grecaptcha.render(recaptchaElement, { 'sitekey': siteKey });
+              } else if (version === "v3") {
+                  grecaptcha.execute(siteKey, { action: 'submit' }).then(function(token) {
+                      console.log('reCAPTCHA v3 đã được thiết lập với token:', token);
+                      document.getElementById('g-recaptcha-response').value = token;
+                  }).catch(function(error) {
+                      console.error('reCAPTCHA v3 execution failed:', error);
+                  });
+              }
+          });
+      } else {
+          console.warn("reCAPTCHA đã tắt.");
+          document.getElementById('g-recaptcha').style.display = 'none';
+          document.getElementById('g-recaptcha-response').style.display = 'none';
+      }
+  
+
+      const closeButton = document.querySelector(".close-btn");
+      const nothanksbtn = document.querySelector(".btn-no-thank");
+      const formContainer = document.getElementById('coupon-form-container');
+      const topbar = document.getElementById("topbar");
+      const bottombar = document.getElementById("bottombar");
+      const resultForm = document.getElementById('result-form');
+      
+      // Cài đặt chung
+      var generalSettings = {{ shop.metafields.GeneralSettings | json }};
+      const visitorCloseOption = generalSettings.GeneralSettings.visitorCloseOption;
+      const popupTrigger = generalSettings.GeneralSettings.popupTrigger;
+      const initialTime = generalSettings.GeneralSettings.initialTime;
+      const noThanksSetting = generalSettings.GeneralSettings.noThanksReminder;
+      const subscribeReminder = generalSettings.GeneralSettings.subscribeReminder;
+      const forbiddenDomains = generalSettings.GeneralSettings.emailDomains.split(',').map(domain => domain.trim());
+  
+      if (localStorage.getItem('noThanksSetting') === 'true') {
+          formContainer.style.display = 'none';
+      } else {
+          setupPopupTrigger(popupTrigger, initialTime);
+      }
+  
+      function minimizeForm(option) {
+          formContainer.style.display = 'none';
+          if (option === 'Minimize to topbar') {
+              topbar.style.display = 'flex';
+          } else if (option === 'Minimize to bottombar') {
+              bottombar.style.display = 'flex';
+          }
+      }
+  
+      function showPopup() {
+          formContainer.style.display = 'flex';
+      }
+  
+      function setupPopupTrigger(popupTrigger, initialTime) {
+          if (popupTrigger === 'After initial time') {
+              setTimeout(function () {
+                  showPopup();
+              }, initialTime * 1000);
+          } else if (popupTrigger === 'When users scroll') {
+              window.addEventListener('scroll', function () {
+                  if (window.scrollY > 500) {
+                      showPopup();
+                  }
+              });
+          } else if (popupTrigger === 'When users are about to exit') {
+              document.addEventListener('mousemove', function (e) {
+                  if (e.clientY < 50) {
+                      showPopup();
+                  }
+              });
+          }
+      }
+  
+      closeButton.addEventListener('click', function () {
+          if (visitorCloseOption === 'Minimize to topbar') {
+              minimizeForm('Minimize to topbar');
+          } else if (visitorCloseOption === 'Minimize to bottombar') {
+              minimizeForm('Minimize to bottombar');
+          }
+      });
+  
+      document.getElementById('topbar').addEventListener('click', function () {
+          formContainer.style.display = 'flex';
+          topbar.style.display = 'none';
+      });
+  
+      document.getElementById('bottombar').addEventListener('click', function () {
+          formContainer.style.display = 'flex';
+          bottombar.style.display = 'none';
+      });
+
+      document.querySelector(".close-btn-result").addEventListener("click", function () {
+        resultForm.style.display = 'none';
+      });
+  
+      nothanksbtn.addEventListener('click', function () {
+          if (noThanksSetting === true) {
+              localStorage.setItem('noThanksSetting', 'true');
+              formContainer.style.display = 'none';
+          } else {
+              formContainer.style.display = 'none';
+          }
+      });
+  
+      // Xử lý form submit
+      document.getElementById('coupon-form').addEventListener('submit', async (e) => {
+        e.preventDefault();
+
+        const recaptchaResponse = '';
+        
+        if(isEnabled){
+          recaptchaResponse = document.getElementById('g-recaptcha-response').value || grecaptcha.getResponse(); 
+        }
+
+        const formData = {
+            firstname: document.getElementById('firstname-input').value,
+            lastname: document.getElementById('lastname-input').value,
+            email: document.getElementById('email-input').value,
+            phone: document.getElementById('phone-input').value,
+            agree: document.getElementById('agree').checked,
+            'g-recaptcha-response': recaptchaResponse
+        };
+
+
+        const email = formData.email.toLowerCase();
+        const isEmailValid = forbiddenDomains.every(domain => !email.endsWith(domain));
+
+        if (!isEmailValid) {
+            alert('We do not accept this email domain: ' + forbiddenDomains.join(', '));
+            return;
+        }
+
+        try {
+            const response = await fetch('http://localhost:55103/submit-form', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(formData),
+            });
+
+            const result = await response.json();
+
+            if (response.status !== 200) {
+                alert('Error: ' + result.message);
+                return;
+            } 
+
+            formContainer.style.display = 'none';
+            document.getElementById('coupon-code').textContent = result.couponCode;
+            document.getElementById('result-form').style.display = 'flex';
+
+        } catch (error) {
+            console.error('Error:', error);
+        }
+    });
+  });
+  </script>
+  
+
+{% schema %}
+{
+  "name": "Coupon Form",
+  "target": "body",
+  "stylesheet": "coupon-form.css",
+  "javascript": "coupon-form.js",
+  "settings": [
+    {
+      "type": "header",
+      "content": "Form Settings"
+    },
+    {
+      "type": "image_picker",
+      "id": "background_image",
+      "label": "Background Image"
+    },
+    {
+      "type": "color",
+      "id": "background_color",
+      "label": "Background Color",
+      "default": "#EE4949"
+    },
+    {
+      "type": "select",
+      "id": "border_radius",
+      "label": "Border Radius",
+      "default": "5",
+      "options": [
+        {
+          "value": "0",
+          "label": "Square"
+        },
+        {
+          "value": "5",
+          "label": "Slightly Rounded"
+        },
+        {
+          "value": "15",
+          "label": "Fully Rounded"
+        }
+      ]
+    },
+    {
+      "type": "header",
+      "content": "Header Settings"
+    },
+    {
+      "type": "text",
+      "id": "header_title",
+      "label": "Header Title",
+      "default": "Get Discount Code"
+    },
+    {
+      "type": "color",
+      "id": "header_color",
+      "label": "Header Color",
+      "default": "#ffffff"
+    },
+    {
+      "type": "range",
+      "id": "font_size",
+      "label": "Font Size",
+      "default": 35,
+      "min": 10,
+      "max": 40,
+      "step": 1
+    },
+    {
+      "type": "checkbox",
+      "id": "bold_text",
+      "label": "Bold",
+      "default": true
+    },
+    {
+      "type": "header",
+      "content": "Content Settings"
+    },
+    {
+      "type": "text",
+      "id": "content",
+      "label": "Content",
+      "default": "Send us an email, and we'll send you an exclusive discount code right away! It's that simple—just drop us a line."
+    },
+    {
+      "type": "range",
+      "id": "font_size_content",
+      "label": "Font Size",
+      "default": 14,
+      "min": 5,
+      "max": 20,
+      "step": 1
+    },
+    {
+      "type": "color",
+      "id": "content_color",
+      "label": "Content Color",
+      "default": "#ffffff"
+    },
+    {
+      "type": "header",
+      "content": "Field Form Settings"
+    },
+    {
+      "type": "checkbox",
+      "id": "get_name",
+      "label": "Get Name",
+      "default": true
+    },
+    {
+      "type": "checkbox",
+      "id": "get_phone",
+      "label": "Get Phone",
+      "default": true
+    },
+    {
+      "type": "checkbox",
+      "id": "get_email",
+      "label": "Get Email",
+      "default": true
+    },
+    {
+      "type": "header",
+      "content": "Accept Settings"
+    },
+    {
+      "type": "checkbox",
+      "id": "accept_terms",
+      "label": "Accept Terms",
+      "default": true
+    },
+    {
+      "type": "text",
+      "id": "terms_text",
+      "label": "Terms Text",
+      "default": "Do you agree to us sending information via email?"
+    },
+    {
+      "type": "header",
+      "content": "Button Settings"
+    },
+    {
+      "type": "text",
+      "id": "submit_text",
+      "label": "Submit Text",
+      "default": "Get code"
+    },
+    {
+      "type": "select",
+      "id": "type_button",
+      "label": "Type Button",
+      "default": "Long",
+      "options": [
+        {
+          "value": "Long",
+          "label": "Long"
+        },
+        {
+          "value": "Short",
+          "label": "Short"
+        }
+      ]
+    },
+    {
+      "type": "color",
+      "id": "background_button_color",
+      "label": "background Color",
+      "default": "#4CDCFC"
+    },
+    {
+      "type": "color",
+      "id": "text_button_color",
+      "label": "Text Color",
+      "default": "#000000"
+    }
+  ]
+}
+{% endschema %}

@@ -1,0 +1,90 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+// Note that some adapters may set a maximum length for the String type by default, please ensure your strings are long
+// enough when changing adapters.
+// See https://www.prisma.io/docs/orm/reference/prisma-schema-reference#string for more information
+datasource db {
+  provider = "postgresql"
+  url      = "postgresql://postgres:admin@localhost:5432/coupon_box"
+}
+
+model Session {
+  id            String    @id
+  shop          String
+  state         String
+  isOnline      Boolean   @default(false)
+  scope         String?
+  expires       DateTime? @db.Timestamptz 
+  accessToken   String
+  userId        BigInt?
+  firstName     String?
+  lastName      String?
+  email         String?
+  accountOwner  Boolean   @default(false)
+  locale        String?
+  collaborator  Boolean?  @default(false)
+  emailVerified Boolean?  @default(false)
+}
+
+model emails {
+  id             Int      @id @default(autoincrement())
+  firstname      String
+  lastname       String
+  email          String
+  phone          String
+  coupon_code    String
+  discount_value String
+  submit_date    DateTime @default(now()) @db.Timestamptz 
+  agree          Boolean
+  shop_id        String 
+}
+
+model capcha_setting {
+  id             Int      @id @default(autoincrement())
+  version        String
+  site_key       String
+  secret_key     String
+  is_eneble      Boolean
+  shop_id        String  @unique
+}
+
+model discount_setting {
+  id               Int      @id @default(autoincrement())
+  discount_type    String
+  discount_amount  String
+  active_date      Int
+  selected_applies_to String
+  item_type        String
+  item_product_title String?
+  item_title      String?
+  item_ids        String?
+  item_image      String?
+  shop_id         String  @unique
+}
+
+model general_setting {
+  id                   Int      @id @default(autoincrement())
+  popup_trigger        String
+  initial_time        String
+  visitor_close_option String
+  no_thanks_reminder   Boolean
+  reminder_time       String
+  reminder_unit       String
+  subscribe_reminder  String
+  email_domains       String
+  shop_id             String  @unique
+}
+
+model mailchimp_setting {
+  id                     Int      @id @default(autoincrement())
+  mailchimp_api_key     String
+  mailchimp_server_prefix String
+  mailchimp_audience_id  String
+  is_eneble             Boolean
+  shop_id               String  @unique
+}
